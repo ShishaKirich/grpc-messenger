@@ -38,7 +38,7 @@ a:hover { text-decoration: underline; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px clamp(16px, 5vw, 56px);
 }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 800; font-size: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 800; font-size: 20px; white-space: nowrap; }
 .brand svg { color: var(--accent); }
 .brand:hover { text-decoration: none; }
 .nav nav { display: flex; align-items: center; gap: 18px; }
@@ -135,6 +135,8 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124, 108, 
 @media (max-width: 520px) {
   .card { padding: 24px 18px; }
   .nav nav { gap: 10px; }
+  .brand { font-size: 17px; }
+  .nav .btn { padding: 8px 12px; }
   .events th:nth-child(2), .events td:nth-child(2) { display: none; }
 }
 
