@@ -365,3 +365,125 @@ def test_live_delivery(channel):
     event = q.get(timeout=5)
     call.cancel()
     assert event.message.sender == "alice" and event.message.ciphertext == b"c"
+
+
+# ---------- клиентская логика (client/core.py) против настоящего сервера ----------
+
+def client_for(channel, name: str, tmp_path, create: bool = True):
+    from client.api import Api
+    from client.core import Messenger, open_keystore
+
+    port = int(channel._channel.target().decode().rsplit(":", 1)[1])
+    api = Api("127.0.0.1", port, insecure=True)
+    email = create_user(name) if create else f"{name}@example.com"
+    reply = api.login(email, PASSWORD)
+    api.verify(reply.challenge_id, codes[-1][1])
+    store, _ = open_keystore(tmp_path / "keys", name, PASSWORD)
+    messenger = Messenger(api, name, store)
+    messenger.publish_keys()
+    return messenger
+
+
+def drain(messenger, call_queue, count=1):
+    updates = []
+    for _ in range(count):
+        event = call_queue.get(timeout=5)
+        updates += messenger.handle_event(event)
+    return updates
+
+
+def test_client_regular_and_secret_chat(channel, tmp_path):
+    alice = client_for(channel, "alice", tmp_path)
+    bob = client_for(channel, "bob", tmp_path)
+    alice.contact_action("SendFriendRequest", "bob")
+    bob.contact_action("answer", "alice", accept=True)
+
+    sent = alice.send_text("bob", "Привет, Боб!")
+    [received] = bob.history("alice")
+    assert received.text == "Привет, Боб!" and not received.error and received.id == sent.id
+    assert alice.history("bob")[0].text == "Привет, Боб!"  # своё сообщение тоже читается
+
+    # Секретный чат: bob получает сообщения через поток событий
+    bob_user = User(channel, "bob", bob.api.token)
+    q, call = events(bob_user)
+    time.sleep(0.3)
+    alice.start_secret("bob")
+    updates = drain(bob, q)
+    assert [u.kind for u in updates] == ["secret_started"]
+    alice.send_secret("bob", "только для тебя")
+    [update] = drain(bob, q)
+    assert update.message.text == "только для тебя" and update.message.secret
+
+    # ответ bob расшифровывает alice
+    alice_user = User(channel, "alice", alice.api.token)
+    qa, call_a = events(alice_user)
+    time.sleep(0.3)
+    bob.send_secret("alice", "принято")
+    [update] = drain(alice, qa)
+    assert update.message.text == "принято"
+
+    # на сервере после доставки ничего не осталось, в истории секретных нет
+    assert db().execute("SELECT COUNT(*) FROM messages WHERE kind = 2").fetchone()[0] == 0
+    assert [m.text for m in bob.history("alice")] == ["Привет, Боб!"]
+    assert alice.safety_number("bob") == bob.safety_number("alice")
+
+    # самоуничтожение
+    alice.set_secret_ttl("bob", 10)
+    alice.send_secret("bob", "исчезну")
+    [update] = drain(bob, q)
+    assert update.message.ttl == 10
+    bob.mark_read("alice")
+    for m in bob.store.data["secret"]["alice"]["messages"]:
+        if m["ttl"]:
+            m["read_at"] -= 11
+    assert bob.purge_expired() == {"alice"}
+    assert "исчезну" not in [m.text for m in bob.secret_messages("alice")]
+
+    alice.close_secret("bob")
+    assert [u.kind for u in drain(bob, q)] == ["secret_closed"]
+    assert bob.secret_peers() == []
+    call.cancel()
+    call_a.cancel()
+
+
+def test_client_new_device_breaks_old_secret_chat_and_warns(channel, tmp_path):
+    from client.core import Messenger, new_keystore
+
+    alice = client_for(channel, "alice", tmp_path)
+    bob = client_for(channel, "bob", tmp_path)
+    alice.contact_action("SendFriendRequest", "bob")
+    bob.contact_action("answer", "alice", accept=True)
+    alice.bundle("bob")
+    bob_user = User(channel, "bob", bob.api.token)
+    alice_user = User(channel, "alice", alice.api.token)
+    qa, call = events(alice_user)
+    time.sleep(0.3)
+
+    # bob заходит с нового устройства: новые ключи
+    bob2 = Messenger(bob.api, "bob", new_keystore(tmp_path / "other", "bob", PASSWORD))
+    bob2.publish_keys()
+    updates = drain(alice, qa)
+    assert updates[0].kind == "key_changed"
+    alice.bundle("bob", refresh=True)
+    assert alice.key_history("bob") == 2 and not alice.is_verified("bob")
+    call.cancel()
+    del bob_user
+
+
+def test_site_code_does_not_work_in_messenger(channel):
+    """Коды сайта и мессенджера разные: код для входа на сайт мессенджер не примет."""
+    email = create_user("alice")
+    user_id = db().execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()[0]
+    reply = auth(channel).Login(pb.LoginRequest(email=email, password=PASSWORD))
+    messenger_code = codes[-1][1]
+    from auth_core import otp
+    from auth_core.db import opened
+
+    async def site_code():
+        async with opened() as conn:
+            return await otp.issue_code(conn, user_id, "login", "127.0.0.1")
+    site = asyncio.run(site_code())
+    if site != messenger_code:
+        assert status(lambda: auth(channel).VerifyCode(pb.VerifyRequest(challenge_id=reply.challenge_id, code=site))) \
+            == grpc.StatusCode.INVALID_ARGUMENT
+    assert auth(channel).VerifyCode(pb.VerifyRequest(challenge_id=reply.challenge_id, code=messenger_code)).token

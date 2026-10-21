@@ -1,0 +1,6 @@
+# Клиент мессенджера (PySide6). Сервер и сайт ставятся из requirements.txt.
+PySide6>=6.8
+grpcio>=1.84
+protobuf>=7.36
+cryptography>=42
+argon2-cffi>=23.1
