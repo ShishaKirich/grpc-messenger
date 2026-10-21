@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Код подтверждения · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="icon-circle">
+    {% if purpose == "totp" %}
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+    {% else %}
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+    {% endif %}
+  </div>
+  {% if purpose == "totp" %}
+  <h2>Код из приложения</h2>
+  <p class="muted">Шаг 2 из 2. Откройте приложение-аутентификатор и введите шестизначный код для {{ app_name }}.
+    Нет телефона под рукой? Введите резервный код вида <b class="nowrap">abcd-efgh</b>.</p>
+  {% else %}
+  <h2>Проверьте почту</h2>
+  <p class="muted">
+    {% if purpose == "verify_email" %}Подтвердите регистрацию.
+    {% elif purpose == "login" %}Шаг 2 из 2.
+    {% elif purpose == "reset" %}Восстановление пароля.
+    {% elif purpose == "change_password" %}Подтвердите смену пароля.
+    {% elif purpose == "change_email" %}Подтвердите новый адрес.{% endif %}
+    Мы отправили код на <b>{{ email }}</b>
+  </p>
+  {% endif %}
+  <form method="post" action="/verify" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if purpose == "totp" %}
+    <input class="code-input" name="code" maxlength="9" autocomplete="one-time-code" placeholder="••••••" required autofocus>
+    {% else %}
+    <input class="code-input" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+           autocomplete="one-time-code" placeholder="••••••" required autofocus>
+    {% endif %}
+    {% if can_trust %}
+    <label class="check"><input type="checkbox" name="trust" value="1"> Доверять этому устройству 30 дней</label>
+    {% endif %}
+    <button class="btn btn-block">Подтвердить</button>
+  </form>
+  <div class="verify-actions">
+    {% if purpose != "totp" %}
+    <form method="post" action="/verify/resend">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link" data-countdown="{{ resend_wait }}" {% if resend_wait %}disabled{% endif %}>Отправить код ещё раз</button>
+    </form>
+    {% else %}<span></span>{% endif %}
+    <form method="post" action="/verify/cancel">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link link-muted">Отмена</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
