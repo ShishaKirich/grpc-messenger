@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
     def _add_row(self, kind: str, peer: str):
         key = (kind, peer)
         subtitles = {
-            "request": "хочет добавить вас в друзья",
+            "request": "заявка в друзья",
             SECRET: "🔒 секретный чат",
             REGULAR: "🔐 сквозное шифрование",
             "outgoing": "ждёт ответа",
