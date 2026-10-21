@@ -31,6 +31,8 @@ log = logging.getLogger("auth")
 EMAIL_MAX, PASSWORD_MAX, CODE_MAX, DEVICE_MAX = 254, 256, 16, 64
 CHALLENGE_MAX_ATTEMPTS = 5
 WRONG_CREDENTIALS = "Неверный email или пароль."
+# Свой тип кода: код для входа на сайт не подходит для мессенджера и наоборот
+PURPOSE = "messenger_login"
 
 _background: set[asyncio.Task] = set()
 
@@ -116,7 +118,7 @@ class AuthService(pb_grpc.AuthServicer):
                     await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Неверный код.")
             else:
                 method = "otp"
-                result, _ = await otp.check_code(db, user["id"], "login", code)
+                result, _ = await otp.check_code(db, user["id"], PURPOSE, code)
                 if result is otp.CheckResult.WRONG:
                     await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Неверный код.")
                 if result is otp.CheckResult.TOO_MANY:
@@ -155,7 +157,7 @@ class AuthService(pb_grpc.AuthServicer):
             if challenge["method"] != "email":
                 await context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Код из приложения не отправляется по почте.")
             user = await fetch_one(db, "SELECT * FROM users WHERE id = ?", (challenge["user_id"],))
-            wait = await otp.seconds_until_resend(db, user["id"], "login")
+            wait = await otp.seconds_until_resend(db, user["id"], PURPOSE)
             if wait > 0:
                 await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, f"Новый код можно запросить через {wait} с.")
             await self._send_login_code(db, context, user, peer_ip(context))
@@ -175,9 +177,9 @@ class AuthService(pb_grpc.AuthServicer):
     async def _send_login_code(db: aiosqlite.Connection, context, user: aiosqlite.Row, ip: str) -> None:
         if await otp.issue_limit_reached(db, user["id"], ip):
             await context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "Слишком много запросов кода. Попробуйте через час.")
-        code = await otp.issue_code(db, user["id"], "login", ip)
+        code = await otp.issue_code(db, user["id"], PURPOSE, ip)
         try:
-            await mailer.send_code(user["email"], code, "login")
+            await mailer.send_code(user["email"], code, PURPOSE)
         except Exception:
             log.exception("Не удалось отправить код на %s", user["email"])
             await context.abort(grpc.StatusCode.UNAVAILABLE, "Не удалось отправить письмо. Попробуйте позже.")

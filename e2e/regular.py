@@ -58,6 +58,14 @@ def encrypt(my_keys: DeviceKeys, me: str, peer: PublicBundle, plaintext: bytes) 
     return json.dumps({"h": header, "sig": b64(signature)}).encode(), ciphertext
 
 
+def sender_key_of(header: bytes) -> bytes | None:
+    """Открытый identity-ключ отправителя из заголовка: по нему находим, чьей подписью проверять."""
+    try:
+        return unb64(json.loads(header)["h"]["sender_key"])
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
 def decrypt(my_keys: DeviceKeys, me: str, sender: str, recipient: str, header: bytes, ciphertext: bytes,
             sender_sign_key: bytes) -> bytes:
     """Расшифровывает сообщение, где я отправитель или получатель.

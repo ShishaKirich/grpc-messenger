@@ -13,6 +13,7 @@ log = logging.getLogger("mailer")
 CODE_SUBJECTS = {
     "verify_email": "Подтверждение регистрации",
     "login": "Код для входа",
+    "messenger_login": "Код для входа в мессенджер",
     "reset": "Восстановление пароля",
     "change_password": "Подтверждение смены пароля",  # nosec B105 — это тема письма, а не пароль
     "change_email": "Подтверждение нового email",
