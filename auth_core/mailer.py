@@ -7,6 +7,7 @@ from email.message import EmailMessage
 import aiosmtplib
 
 from .config import settings
+from .security import for_log
 
 log = logging.getLogger("mailer")
 
@@ -42,7 +43,8 @@ def _message(to: str, subject: str, text: str, body_html: str) -> EmailMessage:
 
 async def _send(msg: EmailMessage) -> None:
     if settings.mail_backend == "console":
-        log.warning("[DEV] Письмо для %s: %s\n%s", msg["To"], msg["Subject"], msg.get_body(("plain",)).get_content())
+        log.warning("[DEV] Письмо для %s: %s | %s", for_log(msg["To"]), for_log(msg["Subject"]),
+                    for_log(msg.get_body(("plain",)).get_content(), limit=2000))
         return
     await aiosmtplib.send(
         msg,
@@ -62,7 +64,7 @@ async def send_code(to: str, code: str, purpose: str) -> None:
     subject = CODE_SUBJECTS[purpose]
     if settings.mail_backend == "console":
         # Отдельная строка с кодом удобна при разработке и в нагрузочных тестах
-        log.warning("[DEV] Код для %s (%s): %s", to, purpose, code)
+        log.warning("[DEV] Код для %s (%s): %s", for_log(to), for_log(purpose), for_log(code))
         return
     text = (f"Ваш код: {code}\n\nКод действует {minutes} мин. Никому его не сообщайте. "
             "Если вы не запрашивали код, просто проигнорируйте это письмо.")

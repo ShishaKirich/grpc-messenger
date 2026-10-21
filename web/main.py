@@ -19,7 +19,8 @@ from auth_core.login_log import recent_failures
 from auth_core.config import settings
 from auth_core.db import connect, fetch_all, fetch_one, get_db, init_db
 from auth_core.passwords import validate_new_password
-from auth_core.security import csrf_token, csrf_valid, describe_user_agent, hash_password, verify_password
+from auth_core.security import (csrf_token, csrf_valid, describe_user_agent, for_log, hash_password,
+                                verify_password)
 
 from . import sessions
 from .sessions import client_ip, user_agent
@@ -178,7 +179,7 @@ async def start_code_step(request: Request, db: aiosqlite.Connection, user_id: i
     try:
         await mailer.send_code(email, code, purpose)
     except Exception:
-        log.exception("Не удалось отправить письмо на %s", email)
+        log.exception("Не удалось отправить письмо на %s", for_log(email))
         return redirect("/verify", ("error", "Не удалось отправить письмо. Попробуйте отправить код ещё раз."), request)
     return response
 
@@ -539,7 +540,7 @@ async def resend(request: Request, csrf: str = Form("", max_length=100), db: aio
     try:
         await mailer.send_code(pending["email"], code, pending["purpose"])
     except Exception:
-        log.exception("Не удалось отправить письмо на %s", pending["email"])
+        log.exception("Не удалось отправить письмо на %s", for_log(pending["email"]))
         return redirect("/verify", ("error", "Не удалось отправить письмо. Попробуйте позже."), request)
     return redirect("/verify", ("success", "Новый код отправлен."), request)
 
