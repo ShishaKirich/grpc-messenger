@@ -11,6 +11,6 @@ zxcvbn>=4.4
 httpx>=0.27
 pyotp>=2.9
 segno>=1.6
-cryptography>=42
+cryptography>=50.0.2
 grpcio>=1.84
 protobuf>=7.36
