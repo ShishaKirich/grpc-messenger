@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Резервные коды · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  {% if just_enabled %}<div class="alert alert-success">Приложение подключено. Теперь при входе нужен код из него.</div>{% endif %}
+  <h2>Резервные коды</h2>
+  <p class="muted">Сохраните их в надёжном месте (менеджер паролей или распечатка). Каждый код работает один раз и
+    пригодится, если потеряете телефон. <b>Больше мы их не покажем.</b></p>
+  <ul class="backup-codes" data-backup-codes>
+    {% for c in codes %}<li><code>{{ c }}</code></li>{% endfor %}
+  </ul>
+  <div class="pw-tools">
+    <button type="button" class="link" data-copy-backup>Скопировать все</button>
+  </div>
+  <a class="btn btn-block" href="/settings">Я сохранил коды</a>
+</div>
+{% endblock %}
