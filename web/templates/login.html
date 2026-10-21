@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Вход · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>С возвращением</h2>
+  <p class="muted">Шаг 1 из 2: введите email и пароль.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Email<input type="email" name="email" value="{{ form.email or '' }}" required maxlength="254" autocomplete="email"></label>
+    <label>
+      <span class="label-row">Пароль <a href="/forgot" class="small">Забыли пароль?</a></span>
+      <input type="password" name="password" required maxlength="128" autocomplete="current-password">
+    </label>
+    <button class="btn btn-block">Продолжить</button>
+  </form>
+  <p class="switch">Нет аккаунта? <a href="/register">Зарегистрироваться</a></p>
+</div>
+{% endblock %}

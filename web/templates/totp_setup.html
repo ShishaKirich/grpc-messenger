@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Подключение приложения · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card card-wide">
+  <h2>Подключение приложения-аутентификатора</h2>
+  <p class="muted">Подойдёт Google Authenticator, Яндекс Ключ, Microsoft Authenticator, 1Password и другие.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <div class="totp-setup">
+    <img class="qr" src="{{ qr }}" alt="QR-код для приложения-аутентификатора" width="220" height="220">
+    <ol class="steps-list">
+      <li>Откройте приложение и нажмите «Добавить» или «+».</li>
+      <li>Отсканируйте QR-код. Если камера недоступна, введите ключ вручную:
+        <code class="secret">{{ secret }}</code></li>
+      <li>Введите шестизначный код, который покажет приложение:
+        <form method="post" action="/settings/totp/confirm" class="form form-inline">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input class="code-input code-small" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                 autocomplete="one-time-code" placeholder="••••••" required autofocus>
+          <button class="btn">Подтвердить</button>
+        </form>
+      </li>
+    </ol>
+  </div>
+  <p class="muted small">Никому не показывайте этот QR-код и ключ: с ними можно генерировать ваши коды. После подтверждения они больше не отображаются.</p>
+  <p class="switch"><a href="/settings">Отмена</a></p>
+</div>
+{% endblock %}

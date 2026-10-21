@@ -1,0 +1,4 @@
+# Ложные срабатывания generic-api-key: это аннотации типов (X25519PrivateKey), а не ключи.
+1837783934415d86bcdf10ef1d0135b62173c6e9:e2e/primitives.py:generic-api-key:22
+1837783934415d86bcdf10ef1d0135b62173c6e9:e2e/primitives.py:generic-api-key:28
+1837783934415d86bcdf10ef1d0135b62173c6e9:e2e/keys.py:generic-api-key:56
