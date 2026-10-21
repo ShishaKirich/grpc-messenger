@@ -519,3 +519,8 @@ def test_username_must_be_unique(client):
     logout(client)
     r = register(client, email="other@example.com", name="KIRILL")  # регистр не важен
     assert r.status_code == 400 and "занято" in r.text
+
+
+def test_for_log_escapes_newlines():
+    from auth_core.security import for_log
+    assert for_log("a@b.c\r\nINFO: вход выполнен\x1b[0m") == "a@b.c\\r\\nINFO: вход выполнен\\x1b[0m"

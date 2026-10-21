@@ -72,6 +72,13 @@ def token_hash(token: str) -> str:
 MESSENGER_UA_PREFIX = "messenger:"
 
 
+def for_log(value: object, limit: int = 200) -> str:
+    """Значение от пользователя для записи в лог: переводы строк и управляющие символы
+    экранируются, чтобы нельзя было подделать соседние строки лога."""
+    text = str(value).replace("\r", "\\r").replace("\n", "\\n")
+    return "".join(ch if ch.isprintable() else f"\\x{ord(ch):02x}" for ch in text)[:limit]
+
+
 def describe_user_agent(ua: str | None) -> str:
     """Краткое описание устройства по заголовку User-Agent, например «Chrome, Windows»."""
     ua = ua or ""

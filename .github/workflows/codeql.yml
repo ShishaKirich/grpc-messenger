@@ -19,5 +19,5 @@ jobs:
       - uses: github/codeql-action/init@v3
         with:
           languages: python
-          queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
       - uses: github/codeql-action/analyze@v3

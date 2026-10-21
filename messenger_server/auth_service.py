@@ -20,7 +20,7 @@ from auth_core import mailer, otp, totp
 from auth_core.config import settings
 from auth_core.db import fetch_one, opened
 from auth_core.login_log import log_login, recent_failures
-from auth_core.security import MESSENGER_UA_PREFIX, new_token, token_hash, verify_password
+from auth_core.security import MESSENGER_UA_PREFIX, for_log, new_token, token_hash, verify_password
 from proto import messenger_pb2 as pb
 from proto import messenger_pb2_grpc as pb_grpc
 
@@ -181,7 +181,7 @@ class AuthService(pb_grpc.AuthServicer):
         try:
             await mailer.send_code(user["email"], code, PURPOSE)
         except Exception:
-            log.exception("Не удалось отправить код на %s", user["email"])
+            log.exception("Не удалось отправить код на %s", for_log(user["email"]))
             await context.abort(grpc.StatusCode.UNAVAILABLE, "Не удалось отправить письмо. Попробуйте позже.")
 
     @staticmethod
