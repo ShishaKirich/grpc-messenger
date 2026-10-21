@@ -1,0 +1,23 @@
+{# Поля «новый пароль» + «повторите пароль» с генератором и индикатором надёжности #}
+{% macro new_password_fields(label="Пароль") %}
+<div class="pw-block" data-pw-block>
+  <label>{{ label }}
+    <div class="pw-row">
+      <input type="password" name="password" required minlength="{{ pw_min }}" maxlength="128"
+             autocomplete="new-password" placeholder="Не короче {{ pw_min }} символов" data-pw-input>
+      <button type="button" class="icon-btn" data-pw-toggle title="Показать пароль" aria-label="Показать пароль">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </label>
+  <div class="meter"><div class="meter-bar" data-pw-bar></div></div>
+  <div class="pw-hint" data-pw-hint>Используйте длинную фразу или сгенерируйте пароль.</div>
+  <div class="pw-tools">
+    <button type="button" class="link" data-pw-generate>Сгенерировать надёжный пароль</button>
+    <button type="button" class="link" data-pw-copy hidden>Скопировать</button>
+  </div>
+  <label>Повторите пароль
+    <input type="password" name="password2" required minlength="{{ pw_min }}" maxlength="128" autocomplete="new-password" data-pw-confirm>
+  </label>
+</div>
+{% endmacro %}

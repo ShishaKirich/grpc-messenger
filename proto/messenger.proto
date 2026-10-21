@@ -1,0 +1,170 @@
+// Протокол мессенджера «Лес из Шишек».
+//
+// Главное правило: сервер никогда не верит клиенту на слово, кто он такой.
+// Пользователь определяется только по токену сеанса в метаданных
+// `authorization: Bearer <токен>`, который выдаёт Auth.VerifyCode после второго фактора.
+//
+// Сервер не видит текст сообщений: в Envelope лежит только шифротекст,
+// зашифрованный на устройстве отправителя (см. docs/CRYPTO.md).
+//
+// Ошибки возвращаются статусами gRPC (UNAUTHENTICATED, PERMISSION_DENIED, ...)
+// с понятным текстом в details.
+
+syntax = "proto3";
+
+package messenger;
+
+message Empty {}
+
+// ---------- вход ----------
+
+service Auth {
+  // Шаг 1: email и пароль. Токена ещё нет, только номер «вызова» для шага 2.
+  rpc Login(LoginRequest) returns (LoginReply);
+  // Шаг 2: код с почты, из приложения-аутентификатора или резервный код.
+  rpc VerifyCode(VerifyRequest) returns (VerifyReply);
+  // Прислать код на почту ещё раз (не чаще раза в минуту).
+  rpc ResendCode(ResendRequest) returns (Empty);
+  // Завершить текущий сеанс. Требует токен.
+  rpc Logout(Empty) returns (Empty);
+}
+
+enum SecondFactor {
+  SECOND_FACTOR_UNSPECIFIED = 0;
+  EMAIL_CODE = 1;   // код пришёл на почту
+  TOTP = 2;         // код из приложения-аутентификатора (или резервный код)
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string device_name = 3;   // «Windows, ПК Кирилла» — показывается в списке сеансов на сайте
+}
+
+message LoginReply {
+  string challenge_id = 1;
+  SecondFactor method = 2;
+  int64 expires_at = 3;     // до какого момента (unix-время) нужно ввести код
+}
+
+message VerifyRequest {
+  string challenge_id = 1;
+  string code = 2;
+}
+
+message VerifyReply {
+  string token = 1;         // токен сеанса; на сервере хранится только его SHA-256
+  string username = 2;
+  int64 expires_at = 3;
+}
+
+message ResendRequest {
+  string challenge_id = 1;
+}
+
+// ---------- мессенджер ----------
+
+service Messenger {
+  // Поток событий: новые сообщения и изменения в контактах.
+  rpc Subscribe(Empty) returns (stream Event);
+
+  // Открытые ключи устройства (закрытые никогда не покидают устройство).
+  rpc PublishKeys(KeyBundle) returns (Empty);
+  rpc GetKeys(UserRef) returns (KeyBundle);
+
+  // Контакты.
+  rpc ListContacts(Empty) returns (ContactList);
+  rpc SendFriendRequest(UserRef) returns (Empty);
+  rpc AnswerFriendRequest(FriendAnswer) returns (Empty);
+  rpc RemoveFriend(UserRef) returns (Empty);
+  rpc Block(UserRef) returns (Empty);
+  rpc Unblock(UserRef) returns (Empty);
+
+  // Сообщения.
+  rpc SendMessage(Envelope) returns (SendReply);
+  rpc History(HistoryRequest) returns (HistoryReply);
+  // Подтверждение доставки сообщения секретного чата: после него сервер стирает шифротекст.
+  rpc Acknowledge(AckRequest) returns (Empty);
+}
+
+message UserRef {
+  string username = 1;
+}
+
+// Открытые ключи устройства пользователя.
+message KeyBundle {
+  string username = 1;
+  bytes identity_dh = 2;        // X25519, долговременный ключ устройства
+  bytes identity_sign = 3;      // Ed25519, подписывает prekey и сообщения обычных чатов
+  bytes signed_prekey = 4;      // X25519, для начала секретного чата (X3DH)
+  bytes prekey_signature = 5;   // подпись signed_prekey ключом identity_sign
+  int64 key_id = 6;             // номер набора ключей; меняется при смене устройства
+}
+
+enum ContactState {
+  CONTACT_STATE_UNSPECIFIED = 0;
+  FRIEND = 1;
+  INCOMING = 2;      // нам прислали заявку
+  OUTGOING = 3;      // мы отправили заявку
+  BLOCKED = 4;       // мы заблокировали этого пользователя
+  NONE = 5;          // связь удалена
+  KEY_CHANGED = 6;   // у собеседника новые ключи (новое устройство) — стоит сверить код безопасности
+}
+
+message Contact {
+  string username = 1;
+  ContactState state = 2;
+  int64 key_id = 3;
+}
+
+message ContactList {
+  repeated Contact contacts = 1;
+}
+
+message FriendAnswer {
+  string username = 1;
+  bool accept = 2;
+}
+
+enum ChatKind {
+  CHAT_KIND_UNSPECIFIED = 0;
+  REGULAR = 1;   // обычный чат: история хранится на сервере в зашифрованном виде
+  SECRET = 2;    // секретный чат: Double Ratchet, сервер удаляет сообщение после доставки
+}
+
+// Зашифрованное сообщение. Поля sender и sent_at заполняет сервер.
+message Envelope {
+  int64 id = 1;
+  string sender = 2;
+  string recipient = 3;
+  ChatKind kind = 4;
+  bytes header = 5;        // открытые служебные данные шифра (ключи, номера)
+  bytes ciphertext = 6;    // зашифрованный текст
+  int64 sent_at = 7;
+}
+
+message SendReply {
+  int64 id = 1;
+  int64 sent_at = 2;
+}
+
+message HistoryRequest {
+  string peer = 1;
+  int64 before_id = 2;   // 0 — самые свежие
+  int32 limit = 3;       // не больше 200
+}
+
+message HistoryReply {
+  repeated Envelope messages = 1;
+}
+
+message AckRequest {
+  repeated int64 ids = 1;
+}
+
+message Event {
+  oneof payload {
+    Envelope message = 1;
+    Contact contact = 2;
+  }
+}

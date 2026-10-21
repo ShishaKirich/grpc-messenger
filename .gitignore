@@ -1,0 +1,26 @@
+# Секреты и локальные данные — никогда не попадают в репозиторий
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# Ключи: TLS-сертификаты сервера и хранилище ключей клиента
+certs/
+*.key
+*.pem
+keystore/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/

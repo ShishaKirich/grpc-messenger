@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <span class="badge">Защита аккаунта в два шага</span>
+  <h1>Вход, который нельзя<br><span class="grad">украсть одним паролем</span></h1>
+  <p class="lead">Даже если пароль утёк, без одноразового кода из вашей почты в аккаунт никто не войдёт.</p>
+  <div class="hero-actions">
+    {% if logged_in %}
+      <a class="btn" href="/dashboard">Перейти в кабинет</a>
+    {% else %}
+      <a class="btn" href="/register">Создать аккаунт</a>
+      <a class="btn btn-ghost" href="/login">У меня уже есть аккаунт</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="steps">
+  <div class="step"><div class="step-num">1</div><h3>Пароль</h3><p>Хранится только в виде хеша Argon2id, сам пароль нигде не сохраняется.</p></div>
+  <div class="step"><div class="step-num">2</div><h3>Код на почту</h3><p>Шестизначный код живёт 5 минут и сгорает после 5 неверных попыток.</p></div>
+  <div class="step"><div class="step-num">3</div><h3>Вход</h3><p>Доверенные устройства, контроль активных сеансов и письмо при входе с нового устройства.</p></div>
+</section>
+{% endblock %}

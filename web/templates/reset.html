@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import new_password_fields with context %}
+{% block title %}Новый пароль · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Придумайте новый пароль</h2>
+  <p class="muted">После смены пароля все остальные сеансы будут завершены.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ new_password_fields("Новый пароль") }}
+    <button class="btn btn-block">Сохранить пароль</button>
+  </form>
+</div>
+{% endblock %}
