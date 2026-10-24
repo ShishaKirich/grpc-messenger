@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import new_password_fields with context %}
+{% block title %}Настройки · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <div class="card card-flat">
+    <h2>Сменить пароль</h2>
+    <p class="muted">Для подтверждения пришлём код на {{ user.email }}. Остальные сеансы будут завершены.</p>
+    {% if pw_error %}<div class="alert alert-error">{{ pw_error }}</div>{% endif %}
+    <form method="post" action="/settings/password" class="form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Текущий пароль<input type="password" name="current_password" required maxlength="128" autocomplete="current-password"></label>
+      {{ new_password_fields("Новый пароль") }}
+      <button class="btn btn-block">Сменить пароль</button>
+    </form>
+  </div>
+  <div class="card card-flat">
+    <h2>Сменить email</h2>
+    <p class="muted">Код придёт на новый адрес, а на старый — уведомление о смене.</p>
+    {% if email_error %}<div class="alert alert-error">{{ email_error }}</div>{% endif %}
+    <form method="post" action="/settings/email" class="form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Текущий email<input value="{{ user.email }}" disabled></label>
+      <label>Новый email<input type="email" name="new_email" value="{{ new_email or '' }}" required maxlength="254" autocomplete="email"></label>
+      <label>Текущий пароль<input type="password" name="current_password" required maxlength="128" autocomplete="current-password"></label>
+      <button class="btn btn-block">Сменить email</button>
+    </form>
+  </div>
+  <div class="card card-flat grid-full">
+    <div class="section-head">
+      <h2>Приложение-аутентификатор</h2>
+      {% if user.totp_enabled %}<span class="pill pill-ok">подключено</span>{% else %}<span class="pill pill-bad">не подключено</span>{% endif %}
+    </div>
+    {% if totp_error %}<div class="alert alert-error">{{ totp_error }}</div>{% endif %}
+    {% if not user.totp_enabled %}
+    <p class="muted">Google Authenticator, Яндекс Ключ, Microsoft Authenticator и другие. После подключения при входе
+      нужен код из приложения, а не из письма: взлом почты больше не даст доступ к аккаунту.</p>
+    <form method="post" action="/settings/totp/start" class="form form-inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="password" name="current_password" required maxlength="128" autocomplete="current-password" placeholder="Текущий пароль">
+      <button class="btn">Подключить</button>
+    </form>
+    {% else %}
+    <p class="muted">При входе запрашивается код из приложения. Резервных кодов осталось: <b>{{ backup_left }}</b> из 10.</p>
+    <div class="grid-2 grid-tight">
+      <form method="post" action="/settings/totp/backup-codes" class="form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Новые резервные коды<input name="code" required maxlength="9" autocomplete="one-time-code" placeholder="Код из приложения"></label>
+        <button class="btn btn-ghost btn-block">Создать новые (старые перестанут работать)</button>
+      </form>
+      <form method="post" action="/settings/totp/disable" class="form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Отключить приложение<input type="password" name="current_password" required maxlength="128" autocomplete="current-password" placeholder="Текущий пароль"></label>
+        <input name="code" required maxlength="9" autocomplete="one-time-code" placeholder="Код из приложения или резервный">
+        <button class="btn btn-danger btn-block">Отключить</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

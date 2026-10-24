@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Кабинет · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card card-wide">
+  <div class="profile">
+    <div class="avatar">{{ user.username[0]|upper }}</div>
+    <div>
+      <h2>Привет, {{ user.username }}!</h2>
+      <p class="muted">{{ user.email }} <span class="pill pill-ok">почта подтверждена</span>
+        {% if user.totp_enabled %}<span class="pill pill-ok">приложение-аутентификатор</span>
+        {% else %}<a class="pill pill-warn" href="/settings">подключить приложение</a>{% endif %}</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div><span class="muted">Аккаунт создан</span><b>{{ user.created_at|dt }}</b></div>
+    <div><span class="muted">Последний вход</span><b>{{ user.last_login_at|dt }}</b></div>
+    <div><span class="muted">Пароль изменён</span><b>{{ user.password_changed_at|dt }}</b></div>
+  </div>
+
+  <div class="section-head">
+    <h3>Активные сеансы</h3>
+    {% if sessions|length > 1 %}
+    <form method="post" action="/sessions/revoke-others">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn btn-ghost btn-small">Выйти на всех других устройствах</button>
+    </form>
+    {% endif %}
+  </div>
+  <ul class="list">
+    {% for s in sessions %}
+    <li>
+      <div>
+        <b>{{ s.user_agent|device }}</b>{% if s.id == current_session_id %} <span class="pill pill-ok">это устройство</span>{% endif %}
+        <div class="muted small">IP {{ s.ip }} · вход {{ s.created_at|dt }} · активность {{ s.last_seen_at|dt }}</div>
+      </div>
+      <form method="post" action="/sessions/{{ s.id }}/revoke">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="link link-danger">{% if s.id == current_session_id %}Выйти{% else %}Завершить{% endif %}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <h3>Доверенные устройства</h3>
+  {% if devices %}
+  <ul class="list">
+    {% for d in devices %}
+    <li>
+      <div>
+        <b>{{ d.user_agent|device }}</b>
+        <div class="muted small">IP {{ d.ip }} · без кода до {{ d.trusted_until|dt }}</div>
+      </div>
+      <form method="post" action="/devices/{{ d.id }}/untrust">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="link link-danger">Не доверять</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted small">Нет. Отметьте «Доверять этому устройству» при вводе кода, чтобы не вводить его 30 дней.</p>
+  {% endif %}
+
+  <h3>Последние попытки входа</h3>
+  <table class="events">
+    <thead><tr><th>Время</th><th>Устройство</th><th>IP</th><th>Результат</th></tr></thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.created_at|dt }}</td>
+        <td>{{ e.user_agent|device }}</td>
+        <td>{{ e.ip }}</td>
+        <td>
+          {% if not e.success and e.method == "totp_fail" %}<span class="pill pill-bad">неверный код приложения</span>
+          {% elif not e.success %}<span class="pill pill-bad">неверный пароль</span>
+          {% elif e.method == "totp" %}<span class="pill pill-ok">пароль + приложение</span>
+          {% elif e.method == "backup_code" %}<span class="pill pill-ok">резервный код</span>
+          {% elif e.method == "trusted_device" %}<span class="pill pill-ok">доверенное устройство</span>
+          {% elif e.method == "reset" %}<span class="pill pill-ok">восстановление</span>
+          {% else %}<span class="pill pill-ok">пароль + код</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

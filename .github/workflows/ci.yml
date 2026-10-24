@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+      - name: Сгенерированный код совпадает с proto/messenger.proto
+        run: |
+          python scripts/gen_proto.py
+          git diff --exit-code -I "GRPC_GENERATED_VERSION" -- proto/
+      - name: Тесты (сайт, gRPC-сервер, шифрование, логика клиента)
+        run: pytest -q
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Установка сканеров
+        run: pip install bandit pip-audit
+      - name: Статический анализ (bandit)
+        run: bandit -q -r auth_core web messenger_server e2e client -x proto
+      - name: Уязвимости в зависимостях (pip-audit)
+        run: |
+          pip-audit -r requirements.txt
+          pip-audit -r requirements-client.txt
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Поиск секретов во всей истории (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

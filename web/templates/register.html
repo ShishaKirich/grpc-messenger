@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import new_password_fields with context %}
+{% block title %}Регистрация · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Создать аккаунт</h2>
+  <p class="muted">После регистрации мы пришлём код, чтобы подтвердить почту.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/register" class="form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Имя пользователя <span class="muted">(логин в мессенджере)</span><input name="username" value="{{ form.username or '' }}" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" autocomplete="username" placeholder="например, kirill_s"></label>
+    <label>Email<input type="email" name="email" value="{{ form.email or '' }}" required maxlength="254" autocomplete="email"></label>
+    {{ new_password_fields() }}
+    <button class="btn btn-block">Зарегистрироваться</button>
+  </form>
+  <p class="switch">Уже есть аккаунт? <a href="/login">Войти</a></p>
+</div>
+{% endblock %}

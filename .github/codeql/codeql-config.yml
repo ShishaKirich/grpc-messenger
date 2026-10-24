@@ -1,0 +1,13 @@
+# Настройки CodeQL.
+#
+# py/weak-sensitive-data-hashing выключено: единственное срабатывание — SHA-1 в
+# auth_core/passwords.py, которого требует API Have I Been Pwned (k-анонимность,
+# наружу уходят 5 символов хеша). Пароли хранятся как Argon2id. Слабые хеши
+# без usedforsecurity=False по-прежнему ловит bandit (B324) в ci.yml.
+queries:
+  - uses: security-extended
+query-filters:
+  - exclude:
+      id: py/weak-sensitive-data-hashing
+paths-ignore:
+  - proto
